@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GeoVision</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%233DDBC4'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0A1220;--panel:#111D30;--panel2:#0E1828;--border:#22344F;--text:#EEF2F6;--muted:#A9B8CC;--dim:#6B7C93;
+  --accent:#3DDBC4;--accent-ink:#0A1220;--warn:#FFB547;--danger:#FF6B4A;--shadow:0 8px 30px rgba(0,0,0,.35);
+  --radius:14px;--font:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;--mono:Consolas,"Cascadia Mono",Menlo,monospace;
+}
+:root[data-theme="light"]{
+  --bg:#F4F6F2;--panel:#FFFFFF;--panel2:#EEF2EE;--border:#DCE2DD;--text:#0E1A2B;--muted:#4A5568;--dim:#7A8591;
+  --accent:#157A6E;--accent-ink:#FFFFFF;--warn:#B35C00;--danger:#C2412D;--shadow:0 8px 24px rgba(14,26,43,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5}
+button,select,input{font:inherit;color:inherit}
+a{color:var(--accent)}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+/* sidebar */
+.side{background:var(--panel);border-right:1px solid var(--border);padding:22px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px 18px}
+.brand b{font-size:20px;letter-spacing:-.3px}
+.brand small{display:block;color:var(--dim);font-size:12px}
+.nav{all:unset;display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;color:var(--muted);cursor:pointer;font-weight:500}
+.nav:hover{background:var(--panel2);color:var(--text)}
+.nav.active{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.nav:focus-visible{outline:2px solid var(--accent)}
+.nav svg{width:20px;height:20px;flex:none}
+.side .spacer{flex:1}
+.side-foot{font-size:12px;color:var(--dim);padding:8px}
+/* main */
+.main{padding:22px 32px 48px;min-width:0}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:22px;flex-wrap:wrap}
+.top h1{font-size:24px;margin:0;flex:1;letter-spacing:-.3px}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--panel);font-size:13px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--dim)}
+.dot.ok{background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)}
+.dot.bad{background:var(--danger)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 16px;border-radius:10px;border:1px solid var(--border);background:var(--panel);cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--danger)}
+.btn.danger:hover:not(:disabled){border-color:var(--danger)}
+.btn.sm{padding:6px 11px;font-size:13px}
+.btn svg{width:16px;height:16px}
+.icon-btn{padding:8px;width:38px;height:38px}
+.view{display:none}
+.view.active{display:block;animation:none}
+.grid{display:grid;gap:18px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.card h2{font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+.card h2 .grow{flex:1}
+.muted{color:var(--muted)} .dim{color:var(--dim)} .mono{font-family:var(--mono)}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hint{font-size:13px;color:var(--dim)}
+/* dropzone */
+.drop{border:2px dashed var(--border);border-radius:var(--radius);padding:34px 20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--panel2)}
+.drop:hover,.drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--panel2))}
+.drop svg{width:44px;height:44px;color:var(--accent)}
+.drop p{margin:8px 0 0}
+.samples{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:10px}
+.sample{all:unset;cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--panel2);display:flex;flex-direction:column}
+.sample:hover,.sample:focus-visible{border-color:var(--accent)}
+.sample img{width:100%;aspect-ratio:1;object-fit:cover;display:block;image-rendering:pixelated}
+.sample span{font-size:11px;padding:4px 6px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opts{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:14px}
+label.check{display:inline-flex;gap:8px;align-items:center;cursor:pointer}
+select,input[type=text],input[type=number]{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+input[type=range]{accent-color:var(--accent)}
+/* switch */
+.switch{position:relative;width:40px;height:22px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch i{position:absolute;inset:0;background:var(--border);border-radius:999px;transition:.15s}
+.switch i:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
+.switch input:checked+i{background:var(--accent)}
+.switch input:checked+i:before{transform:translateX(18px)}
+.switch input:focus-visible+i{outline:2px solid var(--accent)}
+/* result */
+.result{display:grid;grid-template-columns:minmax(240px,400px) minmax(300px,1fr);gap:22px}
+.viewer{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--border)}
+.viewer img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.viewer.side-by-side{display:grid;grid-template-columns:1fr 1fr;gap:4px;aspect-ratio:2}
+.viewer.side-by-side img{position:static;opacity:1!important}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.seg button{all:unset;padding:7px 12px;font-size:13px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--accent)}
+.pred{display:flex;gap:20px;align-items:center}
+.ring{width:120px;height:120px;flex:none}
+.pred .label{font-size:30px;font-weight:700;letter-spacing:-.5px;line-height:1.1}
+.bar-row{display:grid;grid-template-columns:minmax(0,150px) minmax(80px,1fr) 60px;gap:10px;align-items:center;margin:7px 0;font-size:14px}
+.bar{height:10px;background:var(--panel2);border-radius:999px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.bar.warn>i{background:var(--warn)}
+.banner{padding:12px 14px;border-radius:10px;border:1px solid;font-size:14px;display:flex;gap:10px;align-items:flex-start}
+.banner.warn{border-color:color-mix(in srgb,var(--warn) 50%,transparent);background:color-mix(in srgb,var(--warn) 10%,transparent);color:var(--warn)}
+.banner.ok{border-color:color-mix(in srgb,var(--accent) 50%,transparent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent)}
+.banner.bad{border-color:color-mix(in srgb,var(--danger) 50%,transparent);background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger)}
+.banner.info{border-color:var(--border);background:var(--panel2);color:var(--muted)}
+.empty{padding:36px;text-align:center;color:var(--dim)}
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+.kpi .v{font-size:28px;font-weight:700;letter-spacing:-.5px}
+.kpi .k{font-size:13px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border)}
+th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.thumb{width:40px;height:40px;border-radius:6px;object-fit:cover;image-rendering:pixelated;display:block}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--border)}
+.tag.ok{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
+.tag.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 50%,transparent)}
+.tag.bad{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 50%,transparent)}
+.progress{height:8px;background:var(--panel2);border-radius:999px;overflow:hidden}
+.progress>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.files{max-height:220px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;margin-top:12px}
+.file{position:relative}
+.file img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;image-rendering:pixelated;border:1px solid var(--border)}
+.file button{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,.7);color:#fff;cursor:pointer;font-size:14px;line-height:1}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--dim);font-size:12px;font-family:var(--font)}
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.gallery figure{margin:0;background:var(--panel2);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:zoom-in}
+.gallery img{width:100%;display:block;background:#fff}
+.gallery figcaption{padding:8px 12px;font-size:13px;color:var(--muted)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start}
+.steps li:before{content:counter(s);width:30px;height:30px;border-radius:50%;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);display:grid;place-items:center;font-weight:700}
+kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--panel2)}
+/* toast + modal */
+#toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:50}
+.toast{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--accent);padding:11px 16px;border-radius:10px;box-shadow:var(--shadow);max-width:360px;font-size:14px}
+.toast.error{border-left-color:var(--danger)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:60;padding:30px}
+.modal.open{display:flex}
+.modal img{max-width:100%;max-height:100%;border-radius:10px;background:#fff}
+.modal .close{position:absolute;top:16px;right:16px}
+.spinner{width:18px;height:18px;border:3px solid color-mix(in srgb,var(--accent-ink) 30%,transparent);border-top-color:var(--accent-ink);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation-duration:3s}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:1100px){.result{grid-template-columns:1fr}.viewer{max-width:420px}}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;padding:10px;border-right:none;border-bottom:1px solid var(--border)}
+  .side .spacer,.side-foot,.brand small{display:none}
+  .brand{padding:0 8px 0 0}
+  .main{padding:16px}
+  .result{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side" aria-label="Main">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15" fill="none" stroke="var(--accent)" stroke-width="2"/><ellipse cx="17" cy="17" rx="15" ry="6" fill="none" stroke="var(--accent)" stroke-opacity=".5"/><ellipse cx="17" cy="17" rx="6" ry="15" fill="none" stroke="var(--accent)" stroke-opacity=".5"/><circle cx="29" cy="8" r="3" fill="var(--warn)"/></svg>
+      <div><b>GeoVision</b><small>Land-use classifier</small></div>
+    </div>
+    <button class="nav" data-view="classify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>Classify</button>
+    <button class="nav" data-view="batch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Batch</button>
+    <button class="nav" data-view="monitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Monitoring</button>
+    <button class="nav" data-view="model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>Model report</button>
+    <button class="nav" data-view="help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>Help</button>
+    <div class="spacer"></div>
+    <div class="side-foot">Shashank Mishra · Saksham Srivastava<br>Major Project · Deep Learning</div>
+  </nav>
+
+  <main class="main">
+    <div class="top">
+      <h1 id="title">Classify an image</h1>
+      <span class="pill" id="status" title="API status"><span class="dot"></span><span>Connecting…</span></span>
+      <a class="btn sm" href="/docs" target="_blank" rel="noopener">API docs</a>
+      <button class="btn icon-btn" id="themeBtn" title="Switch light / dark theme" aria-label="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg></button>
+    </div>
+
+    <!-- CLASSIFY -->
+    <section class="view" id="view-classify">
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)" id="classifyInput">
+        <div class="card">
+          <h2>1. Choose an image</h2>
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload an image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+            <p><b>Drop an image here</b> or click to browse</p>
+            <p class="hint">JPG, PNG or TIF · max 10 MB · or paste with <kbd>Ctrl</kbd>+<kbd>V</kbd></p>
+          </div>
+          <input type="file" id="fileInput" accept="image/*" class="sr">
+          <div class="opts">
+            <label class="check"><span class="switch"><input type="checkbox" id="explain" checked><i></i></span>Grad-CAM explanation</label>
+            <label class="check">Show top <select id="topk"><option>3</option><option selected>5</option><option>10</option></select> classes</label>
+          </div>
+        </div>
+        <div class="card">
+          <h2><span class="grow">…or try a test image</span><button class="btn sm" id="shuffleBtn">Shuffle</button></h2>
+          <p class="hint" style="margin-top:-6px">One random image per class from the 4,050-image test set the model never trained on.</p>
+          <div class="samples" id="samples"><div class="hint">Loading samples…</div></div>
+        </div>
+      </div>
+
+      <div class="card" id="resultCard" style="margin-top:18px;display:none">
+        <h2><span class="grow">2. Result</span>
+          <button class="btn sm" id="copyBtn">Copy JSON</button>
+          <button class="btn sm" id="dlBtn">Download heatmap</button>
+          <button class="btn sm" id="newBtn">New image</button>
+        </h2>
+        <div class="result">
+          <div>
+            <div class="viewer" id="viewer"><img id="origImg" alt="Uploaded image"><img id="heatImg" alt="Grad-CAM heatmap"></div>
+            <div class="row" style="margin-top:12px;justify-content:space-between">
+              <div class="seg" id="modeSeg" role="group" aria-label="View mode">
+                <button data-mode="orig">Original</button><button data-mode="overlay" class="on">Heatmap</button><button data-mode="side">Side by side</button>
+              </div>
+              <label class="check hint" id="opacityWrap">Opacity <input type="range" id="opacity" min="0" max="100" value="100"></label>
+            </div>
+            <p class="hint" id="heatNote">Red regions influenced the prediction most.</p>
+          </div>
+          <div class="grid" style="align-content:start">
+            <div class="pred">
+              <svg class="ring" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--panel2)" stroke-width="12"/><circle id="ringArc" cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 314" transform="rotate(-90 60 60)"/><text id="ringText" x="60" y="67" text-anchor="middle" font-size="22" font-weight="700" fill="var(--text)">0%</text></svg>
+              <div>
+                <div class="hint">Predicted land use</div>
+                <div class="label" id="predLabel">–</div>
+                <div class="hint" id="predMeta"></div>
+                <div class="hint" id="trueHint"></div>
+              </div>
+            </div>
+            <div id="lowConf" class="banner warn" style="display:none">Low confidence — the model is unsure. This image should be checked by a person.</div>
+            <div>
+              <div class="hint" style="margin-bottom:4px">Class probabilities</div>
+              <div id="topkBars"></div>
+            </div>
+            <div class="card" style="background:var(--panel2);padding:14px">
+              <div style="font-weight:600;margin-bottom:8px">Was this prediction correct?</div>
+              <div class="row" id="fbRow">
+                <button class="btn sm primary" id="fbYes">Yes, correct</button>
+                <span class="hint">No, it is</span>
+                <select id="fbSelect"></select>
+                <button class="btn sm" id="fbNo">Submit correction</button>
+              </div>
+              <div class="hint" id="fbDone" style="display:none"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BATCH -->
+    <section class="view" id="view-batch">
+      <div class="card">
+        <h2><span class="grow">Upload many images</span><button class="btn sm" id="batchSampleBtn">Add 20 test images</button><button class="btn sm danger" id="batchClear">Clear</button></h2>
+        <div class="drop" id="bdrop" tabindex="0" role="button" aria-label="Upload images">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <p><b>Drop images here</b> or click to select several</p>
+          <p class="hint">Processed in groups of 32 · up to 500 images</p>
+        </div>
+        <input type="file" id="bInput" accept="image/*" multiple class="sr">
+        <div class="files" id="fileList"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn primary" id="runBatch" disabled>Classify 0 images</button>
+          <div style="flex:1;min-width:160px"><div class="progress"><i id="bProg"></i></div></div>
+          <span class="hint" id="bProgText"></span>
+        </div>
+      </div>
+      <div id="batchOut" style="display:none;margin-top:18px" class="grid">
+        <div class="kpis" id="batchKpis"></div>
+        <div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">
+          <div class="card">
+            <h2><span class="grow">Results</span>
+              <select id="bFilter" aria-label="Filter by class"><option value="">All classes</option></select>
+              <select id="bSort" aria-label="Sort"><option value="order">Upload order</option><option value="conf-desc">Confidence: high → low</option><option value="conf-asc">Confidence: low → high</option><option value="label">Class name</option></select>
+              <button class="btn sm" id="bExport">Export CSV</button>
+            </h2>
+            <div style="max-height:520px;overflow:auto"><table><thead><tr><th></th><th>File</th><th>Prediction</th><th class="num">Confidence</th><th></th></tr></thead><tbody id="bTable"></tbody></table></div>
+          </div>
+          <div class="card"><h2>Predicted class mix</h2><div id="bDist"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MONITOR -->
+    <section class="view" id="view-monitor">
+      <div class="row" style="margin-bottom:16px">
+        <button class="btn" id="mRefresh">Refresh</button>
+        <label class="check"><span class="switch"><input type="checkbox" id="mAuto"><i></i></span>Auto-refresh (5 s)</label>
+        <span style="flex:1"></span>
+        <button class="btn" id="simNormal">Simulate 60 normal requests</button>
+        <button class="btn" id="simDrift">Simulate 60 drifted requests</button>
+        <button class="btn danger" id="mReset">Reset log</button>
+      </div>
+      <div id="simBox" class="banner info" style="display:none;margin-bottom:16px"></div>
+      <div class="kpis" id="mKpis"></div>
+      <div id="driftBanner" style="margin-top:18px"></div>
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:18px">
+        <div class="card"><h2>Data drift (PSI per image statistic)</h2><div id="psiTable"></div></div>
+        <div class="card"><h2>Confidence of recent predictions</h2><div id="confChart"></div></div>
+      </div>
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr);margin-top:18px">
+        <div class="card"><h2>Predicted classes</h2><div id="mDist"></div></div>
+        <div class="card"><h2>Recent requests</h2><div style="max-height:360px;overflow:auto"><table><thead><tr><th>Time</th><th>File</th><th>Prediction</th><th class="num">Conf.</th><th class="num">ms</th><th>Feedback</th></tr></thead><tbody id="mTable"></tbody></table></div></div>
+      </div>
+    </section>
+
+    <!-- MODEL -->
+    <section class="view" id="view-model">
+      <div class="kpis" id="modelKpis"></div>
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:18px">
+        <div class="card"><h2>Model details</h2><table id="modelInfo"></table></div>
+        <div class="card"><h2>Training curve (validation)</h2><div id="trainChart"></div></div>
+      </div>
+      <div class="card" style="margin-top:18px"><h2>Per-class performance (test set)</h2><div id="perClass"></div></div>
+      <div class="card" style="margin-top:18px"><h2><span class="grow">Evaluation figures</span><span class="hint">Click to enlarge</span></h2><div class="gallery" id="gallery"></div></div>
+    </section>
+
+    <!-- HELP -->
+    <section class="view" id="view-help">
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+        <div class="card">
+          <h2>Quick start</h2>
+          <ol class="steps">
+            <li><div><b>Classify one image.</b> Open <i>Classify</i>, drop a satellite tile or click a test image. You get the land-use class, confidence and a Grad-CAM heatmap.</div></li>
+            <li><div><b>Give feedback.</b> Tell the system whether it was right. Corrections feed the live-accuracy figure on the Monitoring page.</div></li>
+            <li><div><b>Process many images.</b> Use <i>Batch</i>, then sort, filter and export the results as CSV.</div></li>
+            <li><div><b>Watch the model in production.</b> On <i>Monitoring</i>, press <i>Simulate drifted requests</i> to see the drift alarm fire.</div></li>
+            <li><div><b>Review the model.</b> <i>Model report</i> shows test accuracy, per-class scores and evaluation figures.</div></li>
+          </ol>
+        </div>
+        <div class="card">
+          <h2>What the numbers mean</h2>
+          <table>
+            <tr><td><b>Confidence</b></td><td class="muted">The model’s probability for its top class. Below 60% is flagged for human review.</td></tr>
+            <tr><td><b>Grad-CAM</b></td><td class="muted">Heatmap of the image regions that drove the prediction (red = most important).</td></tr>
+            <tr><td><b>PSI</b></td><td class="muted">Population Stability Index: how different recent images are from the training data. &lt; 0.10 stable, 0.10–0.25 warning, &gt; 0.25 alert.</td></tr>
+            <tr><td><b>Macro-F1</b></td><td class="muted">Average F1 over the 10 classes, so every class counts equally.</td></tr>
+            <tr><td><b>Classes</b></td><td class="muted" id="helpClasses"></td></tr>
+          </table>
+          <p class="hint" style="margin-top:14px">Keyboard: <kbd>1</kbd>–<kbd>5</kbd> switch pages · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste an image · <kbd>Esc</kbd> close a preview.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Image preview"><button class="btn close" id="modalClose">Close</button><img id="modalImg" alt=""></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const NICE = {AnnualCrop:"Annual crop", HerbaceousVegetation:"Herbaceous vegetation", PermanentCrop:"Permanent crop", SeaLake:"Sea / Lake"};
+const nice = c => NICE[c] || c;
+const pct = (v, d = 1) => v == null ? "–" : (v * 100).toFixed(d) + "%";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const LOW_CONF = 0.6;
+const S = {classes: [], last: null, lastUrl: null, batch: [], batchResults: [], autoTimer: null, sim: false, modelLoaded: false};
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    let msg = r.status + " " + r.statusText;
+    try { const j = await r.json(); if (j.detail) msg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail); } catch {}
+    throw new Error(msg);
+  }
+  return (r.headers.get("content-type") || "").includes("json") ? r.json() : r.text();
+}
+function toast(msg, type = "info") {
+  const t = document.createElement("div");
+  t.className = "toast" + (type === "error" ? " error" : "");
+  t.textContent = msg;
+  $("#toasts").append(t);
+  setTimeout(() => t.remove(), type === "error" ? 6000 : 3200);
+}
+function busy(btn, on, text) {
+  if (on) { btn.dataset.label = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>' + (text || ""); }
+  else { btn.disabled = false; if (btn.dataset.label) btn.innerHTML = btn.dataset.label; }
+}
+const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
+
+/* ---------- theme ---------- */
+function applyTheme(t) { document.documentElement.dataset.theme = t; store.set("gv-theme", t); }
+applyTheme(store.get("gv-theme") || "dark");
+$("#themeBtn").onclick = () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+
+/* ---------- navigation ---------- */
+const TITLES = {classify:"Classify an image", batch:"Batch classification", monitor:"Production monitoring", model:"Model report", help:"Help"};
+const VIEWS = Object.keys(TITLES);
+function show(view) {
+  if (!TITLES[view]) view = "classify";
+  $$(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + view));
+  $$(".nav").forEach(n => n.classList.toggle("active", n.dataset.view === view));
+  $("#title").textContent = TITLES[view];
+  if (location.hash !== "#" + view) history.replaceState(null, "", "#" + view);
+  if (view === "monitor") refreshMonitor();
+  if (view === "model") loadModel();
+  setAuto();
+}
+$$(".nav").forEach(n => n.onclick = () => show(n.dataset.view));
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeModal();
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (["input","select","textarea"].includes(tag) || e.ctrlKey || e.metaKey || e.altKey) return;
+  const i = Number(e.key) - 1;
+  if (i >= 0 && i < VIEWS.length) show(VIEWS[i]);
+});
+
+/* ---------- status ---------- */
+async function pollHealth() {
+  const pill = $("#status");
+  try {
+    const h = await api("/health");
+    S.modelLoaded = h.model_loaded;
+    pill.querySelector(".dot").className = "dot " + (h.model_loaded ? "ok" : "bad");
+    pill.lastElementChild.textContent = h.model_loaded ? "Model ready" + (S.info ? " · " + S.info.model_name + " · " + S.info.device.toUpperCase() : "") : "API up · no model loaded";
+  } catch {
+    pill.querySelector(".dot").className = "dot bad";
+    pill.lastElementChild.textContent = "API offline";
+  }
+}
+async function loadInfo() {
+  try {
+    S.info = await api("/model-info");
+    S.classes = S.info.classes;
+    $("#fbSelect").innerHTML = S.classes.map(c => `<option value="${c}">${nice(c)}</option>`).join("");
+    $("#bFilter").innerHTML = '<option value="">All classes</option>' + S.classes.map(c => `<option value="${c}">${nice(c)}</option>`).join("");
+    $("#helpClasses").textContent = S.classes.map(nice).join(", ");
+  } catch (e) { toast("Could not load model info: " + e.message, "error"); }
+  pollHealth();
+}
+
+/* ---------- modal ---------- */
+function openModal(src, alt) { $("#modalImg").src = src; $("#modalImg").alt = alt || ""; $("#modal").classList.add("open"); $("#modalClose").focus(); }
+function closeModal() { $("#modal").classList.remove("open"); }
+$("#modalClose").onclick = closeModal;
+$("#modal").onclick = e => { if (e.target.id === "modal") closeModal(); };
+
+/* ---------- drop zones ---------- */
+function wireDrop(zone, input, onFiles) {
+  zone.onclick = () => input.click();
+  zone.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } };
+  input.onchange = () => { onFiles([...input.files]); input.value = ""; };
+  zone.ondragover = e => { e.preventDefault(); zone.classList.add("over"); };
+  zone.ondragleave = () => zone.classList.remove("over");
+  zone.ondrop = e => { e.preventDefault(); zone.classList.remove("over"); onFiles([...e.dataTransfer.files]); };
+}
+const isImage = f => f && (f.type.startsWith("image/") || /\.(jpe?g|png|tiff?|bmp|webp)$/i.test(f.name));
+
+/* ---------- classify ---------- */
+wireDrop($("#drop"), $("#fileInput"), files => {
+  const f = files.find(isImage);
+  if (!f) return toast("Please choose an image file (JPG, PNG or TIF).", "error");
+  classify(f, null);
+});
+document.addEventListener("paste", e => {
+  if (!$("#view-classify").classList.contains("active")) return;
+  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith("image/"));
+  if (item) classify(item.getAsFile(), null);
+});
+async function loadSamples() {
+  const box = $("#samples");
+  try {
+    const list = await api("/samples?per_class=true");
+    if (!list.length) { box.innerHTML = '<div class="hint">No test images found. Run scripts/prepare_data.py first.</div>'; return; }
+    box.innerHTML = list.map(s => `<button class="sample" data-url="${s.url}" data-cls="${s.class_name}" title="True class: ${nice(s.class_name)}"><img src="${s.url}" alt="${nice(s.class_name)} test image"><span>${nice(s.class_name)}</span></button>`).join("");
+    $$("#samples .sample").forEach(b => b.onclick = async () => {
+      try {
+        const blob = await (await fetch(b.dataset.url)).blob();
+        classify(new File([blob], b.dataset.cls + "_sample.jpg", {type: blob.type || "image/jpeg"}), b.dataset.cls);
+      } catch (e) { toast("Could not load sample: " + e.message, "error"); }
+    });
+  } catch (e) { box.innerHTML = `<div class="hint">Could not load samples (${esc(e.message)}).</div>`; }
+}
+$("#shuffleBtn").onclick = loadSamples;
+
+async function classify(file, trueClass) {
+  if (file.size > 10 * 1024 * 1024) return toast("Image is larger than 10 MB.", "error");
+  const card = $("#resultCard");
+  card.style.display = "block";
+  if (S.lastUrl) URL.revokeObjectURL(S.lastUrl);
+  S.lastUrl = URL.createObjectURL(file);
+  $("#origImg").src = S.lastUrl;
+  $("#heatImg").removeAttribute("src");
+  $("#predLabel").textContent = "Analysing…";
+  $("#predMeta").textContent = file.name;
+  $("#trueHint").textContent = "";
+  $("#topkBars").innerHTML = "";
+  $("#lowConf").style.display = "none";
+  setRing(0);
+  card.scrollIntoView({behavior: "smooth", block: "start"});
+  const fd = new FormData();
+  fd.append("file", file, file.name || "pasted.png");
+  const explain = $("#explain").checked;
+  try {
+    const r = await api(`/predict?top_k=${$("#topk").value}&explain=${explain}`, {method: "POST", body: fd});
+    S.last = {...r, filename: file.name, trueClass};
+    renderResult(S.last);
+  } catch (e) {
+    $("#predLabel").textContent = "Error";
+    $("#predMeta").textContent = e.message;
+    toast("Prediction failed: " + e.message, "error");
+  }
+}
+function setRing(v) {
+  const c = 2 * Math.PI * 50;
+  $("#ringArc").setAttribute("stroke-dasharray", `${(v * c).toFixed(1)} ${c.toFixed(1)}`);
+  $("#ringArc").setAttribute("stroke", v < LOW_CONF ? "var(--warn)" : "var(--accent)");
+  $("#ringText").textContent = Math.round(v * 100) + "%";
+}
+function renderResult(r) {
+  $("#predLabel").textContent = nice(r.label);
+  $("#predMeta").textContent = `${r.latency_ms.toFixed(0)} ms · request ${r.request_id.slice(0, 8)}`;
+  if (r.trueClass) {
+    const ok = r.trueClass === r.label;
+    $("#trueHint").innerHTML = `True class of this test image: <b style="color:${ok ? "var(--accent)" : "var(--danger)"}">${nice(r.trueClass)} ${ok ? "✓ correct" : "✗ incorrect"}</b>`;
+  }
+  setRing(r.confidence);
+  $("#lowConf").style.display = r.confidence < LOW_CONF ? "flex" : "none";
+  $("#topkBars").innerHTML = r.top_k.map((t, i) => `<div class="bar-row"><span>${nice(t.label)}</span><div class="bar${i === 0 && t.probability < LOW_CONF ? " warn" : ""}"><i style="width:${(t.probability * 100).toFixed(1)}%"></i></div><span class="num mono">${pct(t.probability)}</span></div>`).join("");
+  const hasHeat = !!r.heatmap_png_base64;
+  if (hasHeat) $("#heatImg").src = "data:image/png;base64," + r.heatmap_png_base64;
+  $("#dlBtn").disabled = !hasHeat;
+  $("#modeSeg").style.display = hasHeat ? "" : "none";
+  $("#opacityWrap").style.display = hasHeat ? "" : "none";
+  $("#heatNote").textContent = hasHeat ? "Red regions influenced the prediction most." : "Grad-CAM was switched off for this prediction.";
+  setMode(hasHeat ? "overlay" : "orig");
+  $("#fbRow").style.display = "flex";
+  $("#fbDone").style.display = "none";
+  $("#fbSelect").value = r.trueClass || r.label;
+}
+function setMode(mode) {
+  $$("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === mode));
+  const v = $("#viewer");
+  v.classList.toggle("side-by-side", mode === "side");
+  $("#heatImg").style.display = mode === "orig" ? "none" : "";
+  $("#heatImg").style.opacity = mode === "overlay" ? $("#opacity").value / 100 : 1;
+  $("#opacity").disabled = mode !== "overlay";
+}
+$$("#modeSeg button").forEach(b => b.onclick = () => setMode(b.dataset.mode));
+$("#opacity").oninput = () => setMode("overlay");
+$("#newBtn").onclick = () => { $("#resultCard").style.display = "none"; window.scrollTo({top: 0, behavior: "smooth"}); };
+$("#dlBtn").onclick = () => {
+  if (!S.last?.heatmap_png_base64) return;
+  const a = document.createElement("a");
+  a.href = "data:image/png;base64," + S.last.heatmap_png_base64;
+  a.download = `gradcam_${S.last.label}_${S.last.request_id.slice(0, 8)}.png`;
+  a.click();
+};
+$("#copyBtn").onclick = async () => {
+  if (!S.last) return;
+  const {heatmap_png_base64, trueClass, ...rest} = S.last;
+  const text = JSON.stringify(rest, null, 2);
+  try { await navigator.clipboard.writeText(text); }
+  catch { const t = document.createElement("textarea"); t.value = text; document.body.append(t); t.select(); document.execCommand("copy"); t.remove(); }
+  toast("Result copied to clipboard");
+};
+async function sendFeedback(label) {
+  if (!S.last) return;
+  try {
+    await api("/feedback", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({request_id: S.last.request_id, true_label: label})});
+    $("#fbRow").style.display = "none";
+    $("#fbDone").style.display = "block";
+    $("#fbDone").textContent = label === S.last.label ? "Thanks — recorded as correct." : `Thanks — recorded as ${nice(label)}. This updates live accuracy on the Monitoring page.`;
+    toast("Feedback saved");
+  } catch (e) { toast("Feedback failed: " + e.message, "error"); }
+}
+$("#fbYes").onclick = () => sendFeedback(S.last.label);
+$("#fbNo").onclick = () => {
+  const v = $("#fbSelect").value;
+  if (v === S.last?.label) return toast("Choose a different class than the prediction, or press “Yes, correct”.", "error");
+  sendFeedback(v);
+};
+
+/* ---------- batch ---------- */
+wireDrop($("#bdrop"), $("#bInput"), files => addBatch(files.filter(isImage)));
+function addBatch(files) {
+  if (!files.length) return toast("No image files found in that selection.", "error");
+  const room = 500 - S.batch.length;
+  if (files.length > room) toast(`Only the first ${room} images were added (limit 500).`, "error");
+  files.slice(0, room).forEach(f => S.batch.push({file: f, url: URL.createObjectURL(f)}));
+  renderBatchList();
+}
+function renderBatchList() {
+  $("#fileList").innerHTML = S.batch.map((b, i) => `<div class="file"><img src="${b.url}" alt="${esc(b.file.name)}" title="${esc(b.file.name)}"><button data-i="${i}" aria-label="Remove ${esc(b.file.name)}">×</button></div>`).join("");
+  $$("#fileList button").forEach(btn => btn.onclick = () => { const [r] = S.batch.splice(Number(btn.dataset.i), 1); URL.revokeObjectURL(r.url); renderBatchList(); });
+  const n = S.batch.length;
+  $("#runBatch").disabled = n === 0;
+  $("#runBatch").textContent = `Classify ${n} image${n === 1 ? "" : "s"}`;
+}
+$("#batchClear").onclick = () => {
+  S.batch.forEach(b => URL.revokeObjectURL(b.url));
+  S.batch = []; S.batchResults = [];
+  renderBatchList();
+  $("#batchOut").style.display = "none";
+  $("#bProg").style.width = "0"; $("#bProgText").textContent = "";
+};
+$("#batchSampleBtn").onclick = async () => {
+  const btn = $("#batchSampleBtn");
+  busy(btn, true, " Loading");
+  try {
+    const list = await api("/samples?n=20");
+    const files = await Promise.all(list.map(async s => { const b = await (await fetch(s.url)).blob(); return new File([b], `${s.class_name}_${s.id}.jpg`, {type: b.type || "image/jpeg"}); }));
+    addBatch(files);
+  } catch (e) { toast("Could not load test images: " + e.message, "error"); }
+  busy(btn, false);
+};
+$("#runBatch").onclick = async () => {
+  const btn = $("#runBatch");
+  const items = S.batch.slice();
+  busy(btn, true, " Classifying");
+  S.batchResults = [];
+  try {
+    for (let i = 0; i < items.length; i += 32) {
+      const chunk = items.slice(i, i + 32);
+      const fd = new FormData();
+      chunk.forEach(b => fd.append("files", b.file, b.file.name));
+      const r = await api("/predict/batch?top_k=3", {method: "POST", body: fd});
+      r.results.forEach((res, j) => S.batchResults.push({...res, url: chunk[j].url, order: i + j}));
+      const done = Math.min(i + 32, items.length);
+      $("#bProg").style.width = (done / items.length * 100) + "%";
+      $("#bProgText").textContent = `${done} / ${items.length}`;
+    }
+    renderBatchResults();
+    toast(`Classified ${S.batchResults.length} images`);
+  } catch (e) { toast("Batch failed: " + e.message, "error"); }
+  busy(btn, false);
+  renderBatchList();
+};
+function renderBatchResults() {
+  const R = S.batchResults;
+  if (!R.length) return;
+  $("#batchOut").style.display = "grid";
+  const low = R.filter(r => r.confidence < LOW_CONF).length;
+  const avg = R.reduce((a, r) => a + r.confidence, 0) / R.length;
+  const counts = {};
+  R.forEach(r => counts[r.label] = (counts[r.label] || 0) + 1);
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  $("#batchKpis").innerHTML = kpi(R.length, "Images classified") + kpi(pct(avg), "Average confidence") + kpi(low, "Need review (< 60%)") + kpi(nice(top[0]), "Most common class");
+  $("#bDist").innerHTML = distBars(counts, R.length);
+  const f = $("#bFilter").value, s = $("#bSort").value;
+  let rows = R.filter(r => !f || r.label === f);
+  rows = rows.slice().sort({ "conf-desc": (a, b) => b.confidence - a.confidence, "conf-asc": (a, b) => a.confidence - b.confidence, "label": (a, b) => a.label.localeCompare(b.label), "order": (a, b) => a.order - b.order }[s]);
+  $("#bTable").innerHTML = rows.length ? rows.map(r => `<tr><td><img class="thumb" src="${r.url}" alt=""></td><td class="mono" style="font-size:13px">${esc(r.filename)}</td><td>${nice(r.label)}</td><td class="num"><div class="bar${r.confidence < LOW_CONF ? " warn" : ""}" style="width:90px;display:inline-block;vertical-align:middle;margin-right:8px"><i style="width:${r.confidence * 100}%"></i></div>${pct(r.confidence)}</td><td>${r.confidence < LOW_CONF ? '<span class="tag warn">Review</span>' : '<span class="tag ok">OK</span>'}</td></tr>`).join("") : '<tr><td colspan="5" class="empty">No results for this filter.</td></tr>';
+  $$("#bTable img").forEach(img => img.onclick = () => openModal(img.src, "Uploaded image"));
+}
+$("#bFilter").onchange = renderBatchResults;
+$("#bSort").onchange = renderBatchResults;
+$("#bExport").onclick = () => {
+  if (!S.batchResults.length) return;
+  const head = ["filename", "predicted_class", "confidence", "second_class", "second_probability", "needs_review", "request_id"];
+  const lines = S.batchResults.sort((a, b) => a.order - b.order).map(r => [r.filename, r.label, r.confidence.toFixed(4), r.top_k[1]?.label || "", r.top_k[1]?.probability.toFixed(4) || "", r.confidence < LOW_CONF, r.request_id].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
+  const blob = new Blob([head.join(",") + "\n" + lines.join("\n")], {type: "text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "geovision_predictions.csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+/* ---------- shared renderers ---------- */
+const kpi = (v, k, sub = "") => `<div class="kpi"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div>${sub}</div>`;
+function distBars(counts, total) {
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return '<div class="empty">No predictions yet.</div>';
+  const max = entries[0][1];
+  return entries.map(([c, n]) => `<div class="bar-row" style="grid-template-columns:150px 1fr 70px"><span>${nice(c)}</span><div class="bar"><i style="width:${n / max * 100}%"></i></div><span class="num mono">${n} · ${Math.round(n / total * 100)}%</span></div>`).join("");
+}
+function lineChart(series, opts) {
+  const W = 560, H = 230, L = 46, R = 14, T = 14, B = 30;
+  const n = Math.max(...series.map(s => s.values.length));
+  if (!n) return '<div class="empty">No data yet.</div>';
+  const x = i => L + (n === 1 ? (W - L - R) / 2 : i * (W - L - R) / (n - 1));
+  const y = v => T + (1 - (v - opts.min) / (opts.max - opts.min)) * (H - T - B);
+  let g = "";
+  opts.ticks.forEach(t => { g += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--border)"/><text x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${opts.fmt(t)}</text>`; });
+  (opts.refs || []).forEach(r => { g += `<line x1="${L}" x2="${W - R}" y1="${y(r.v)}" y2="${y(r.v)}" stroke="${r.color}" stroke-dasharray="6 5" stroke-width="1.5"/><text x="${W - R}" y="${y(r.v) - 5}" text-anchor="end" style="fill:${r.color}">${r.label}</text>`; });
+  series.forEach(s => {
+    const pts = s.values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    g += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    if (s.dots) s.values.forEach((v, i) => { g += `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="var(--panel)" stroke="${s.color}" stroke-width="2.5"><title>${s.name}: ${opts.fmt(v)}</title></circle>`; });
+  });
+  (opts.xlabels || []).forEach((lab, i) => { g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${lab}</text>`; });
+  const legend = series.length > 1 ? `<div class="row hint" style="margin-top:6px">${series.map(s => `<span><span style="display:inline-block;width:12px;height:3px;background:${s.color};vertical-align:middle;margin-right:6px"></span>${s.name}</span>`).join("")}</div>` : "";
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label)}">${g}</svg>${legend}`;
+}
+
+/* ---------- monitoring ---------- */
+const STATUS = {ok: ["ok", "Stable"], warning: ["warn", "Warning"], alert: ["bad", "Alert"], insufficient_data: ["info", "Collecting data"]};
+async function refreshMonitor() {
+  try {
+    const [sum, recent] = await Promise.all([api("/monitoring/summary"), api("/monitoring/recent?n=200")]);
+    let drift = null;
+    try { drift = await api("/monitoring/drift"); } catch (e) { drift = {status: "unavailable", message: e.message}; }
+    renderMonitor(sum, drift, recent);
+  } catch (e) { toast("Monitoring refresh failed: " + e.message, "error"); }
+}
+function renderMonitor(sum, drift, recent) {
+  const st = STATUS[drift.status] || ["info", "Unavailable"];
+  $("#mKpis").innerHTML =
+    kpi(sum.total_predictions, "Predictions served") +
+    kpi(pct(sum.mean_confidence), "Mean confidence") +
+    kpi(sum.p95_latency_ms == null ? "–" : sum.p95_latency_ms.toFixed(0) + " ms", "p95 latency") +
+    kpi(sum.live_accuracy == null ? "–" : pct(sum.live_accuracy), "Live accuracy", `<div class="hint">${sum.feedback_count} with feedback</div>`) +
+    kpi(st[1], "Drift status", `<div class="hint">window ${drift.window_size ?? 0} requests</div>`);
+  let banner;
+  if (drift.status === "insufficient_data") banner = `<div class="banner info">Need at least ${drift.min_samples} predictions to measure drift (have ${drift.window_size}). Classify more images or press “Simulate 60 normal requests”.</div>`;
+  else if (drift.status === "unavailable") banner = `<div class="banner info">Drift monitor unavailable: ${esc(drift.message)}</div>`;
+  else banner = `<div class="banner ${st[0]}"><b>${st[1]}.</b>&nbsp;${esc(drift.recommendation)} Low-confidence share: ${pct(drift.model_health.low_confidence_rate)}.</div>`;
+  $("#driftBanner").innerHTML = banner;
+  if (drift.data_drift) {
+    const rows = Object.entries(drift.data_drift).map(([f, d]) => [f.replace("_mean", " mean").replace(/^./, c => c.toUpperCase()), d]);
+    rows.push(["Predicted-class mix", drift.prediction_drift]);
+    $("#psiTable").innerHTML = `<table><thead><tr><th>Statistic</th><th class="num">PSI</th><th style="width:40%"></th><th>Status</th></tr></thead><tbody>${rows.map(([n, d]) => { const s = STATUS[d.status] || ["info", d.status]; return `<tr><td>${n}</td><td class="num mono">${d.psi.toFixed(3)}</td><td><div class="bar ${s[0] === "ok" ? "" : "warn"}"><i style="width:${Math.min(d.psi / 0.5, 1) * 100}%;${s[0] === "bad" ? "background:var(--danger)" : ""}"></i></div></td><td><span class="tag ${s[0]}">${s[1]}</span></td></tr>`; }).join("")}</tbody></table><p class="hint">Noise-corrected PSI (raw PSI minus its expected value for this window size) · bar full at 0.5 · stable &lt; 0.10 · alert &gt; 0.25</p>`;
+  } else $("#psiTable").innerHTML = '<div class="empty">Available after 30 predictions.</div>';
+  const chron = recent.slice().reverse();
+  $("#confChart").innerHTML = lineChart([{name: "Confidence", color: "var(--accent)", values: chron.map(r => r.confidence)}],
+    {min: 0, max: 1, ticks: [0, .5, 1], fmt: v => Math.round(v * 100) + "%", refs: [{v: LOW_CONF, color: "var(--warn)", label: "review threshold 60%"}], label: "Confidence of recent predictions"});
+  $("#mDist").innerHTML = distBars(sum.predictions_by_class || {}, sum.total_predictions || 1);
+  $("#mTable").innerHTML = recent.length ? recent.slice(0, 50).map(r => `<tr><td class="mono" style="font-size:12px">${esc((r.ts || "").replace("T", " ").replace("+00:00", ""))}</td><td class="mono" style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.filename)}</td><td>${nice(r.label)}</td><td class="num">${pct(r.confidence, 0)}</td><td class="num">${r.latency_ms.toFixed(0)}</td><td>${r.feedback_label ? `<span class="tag ${r.feedback_label === r.label ? "ok" : "bad"}">${r.feedback_label === r.label ? "Correct" : nice(r.feedback_label)}</span>` : '<span class="dim">–</span>'}</td></tr>`).join("") : '<tr><td colspan="6" class="empty">No requests logged yet.</td></tr>';
+}
+$("#mRefresh").onclick = async () => { const b = $("#mRefresh"); busy(b, true, " Refreshing"); await refreshMonitor(); busy(b, false); };
+function setAuto() {
+  clearInterval(S.autoTimer);
+  if ($("#mAuto").checked && $("#view-monitor").classList.contains("active")) S.autoTimer = setInterval(refreshMonitor, 5000);
+}
+$("#mAuto").onchange = setAuto;
+$("#mReset").onclick = async () => {
+  if (!confirm("Delete all logged predictions and feedback? This resets the monitoring dashboard.")) return;
+  try { const r = await api("/monitoring", {method: "DELETE"}); toast(`Log cleared (${r.deleted} records removed)`); refreshMonitor(); }
+  catch (e) { toast("Reset failed: " + e.message, "error"); }
+};
+function darken(blob, factor) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(0, 0, c.width, c.height);
+      for (let i = 0; i < d.data.length; i += 4) { d.data[i] *= factor; d.data[i + 1] *= factor; d.data[i + 2] *= factor; }
+      ctx.putImageData(d, 0, 0);
+      URL.revokeObjectURL(img.src);
+      c.toBlob(b => b ? resolve(b) : reject(new Error("encode failed")), "image/png");
+    };
+    img.onerror = () => reject(new Error("image decode failed"));
+    img.src = URL.createObjectURL(blob);
+  });
+}
+async function simulate(drifted) {
+  if (S.sim) return;
+  S.sim = true;
+  const btns = [$("#simNormal"), $("#simDrift"), $("#mReset")];
+  btns.forEach(b => b.disabled = true);
+  const box = $("#simBox");
+  box.style.display = "flex";
+  let ok = 0, correct = 0;
+  try {
+    const list = await api("/samples?n=60");
+    for (const [i, s] of list.entries()) {
+      let blob = await (await fetch(s.url)).blob();
+      if (drifted) blob = await darken(blob, 0.45);
+      const fd = new FormData();
+      fd.append("file", blob, `${drifted ? "darkened" : "normal"}_${s.class_name}_${s.id}.png`);
+      const r = await api("/predict?top_k=1", {method: "POST", body: fd});
+      ok++; if (r.label === s.class_name) correct++;
+      if (i % 4 === 0) await api("/feedback", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({request_id: r.request_id, true_label: s.class_name})});
+      box.innerHTML = `<span class="spinner" style="border-top-color:var(--accent)"></span>&nbsp;Sending ${drifted ? "darkened (brightness × 0.45)" : "normal"} test images: ${i + 1} / ${list.length}`;
+    }
+    box.innerHTML = `Sent ${ok} ${drifted ? "darkened" : "normal"} images — ${correct} classified correctly (${pct(correct / Math.max(ok, 1), 0)}). Every 4th request also sent its true label as feedback.`;
+    toast(drifted ? "Drifted traffic sent — check the drift status" : "Normal traffic sent");
+  } catch (e) { box.textContent = "Simulation stopped: " + e.message; toast("Simulation failed: " + e.message, "error"); }
+  S.sim = false;
+  btns.forEach(b => b.disabled = false);
+  refreshMonitor();
+}
+$("#simNormal").onclick = () => simulate(false);
+$("#simDrift").onclick = () => simulate(true);
+
+/* ---------- model report ---------- */
+let modelLoaded = false;
+async function loadModel() {
+  if (modelLoaded) return;
+  try {
+    const [info, rep] = await Promise.all([S.info ? Promise.resolve(S.info) : api("/model-info"), api("/model/report")]);
+    const tm = rep.test_metrics;
+    $("#modelKpis").innerHTML = tm
+      ? kpi(pct(tm.accuracy), "Test accuracy", `<div class="hint">${tm.num_test_images.toLocaleString()} unseen images</div>`) + kpi(tm.macro_f1.toFixed(3), "Macro-F1") + kpi(pct(tm.top3_accuracy), "Top-3 accuracy") + kpi(tm.ece.toFixed(3), "Calibration error (ECE)") + kpi(tm.latency_ms_per_image.toFixed(1) + " ms", "Latency per image", `<div class="hint">${tm.device.toUpperCase()}, batch 1</div>`)
+      : '<div class="banner info">No test metrics found — run the evaluation step.</div>';
+    const vm = info.val_metrics || {};
+    const rows = [["Architecture", info.model_name], ["Run ID", info.run_id], ["Trained", (info.created_at || "").replace("T", " ")], ["Input size", `${info.img_size} × ${info.img_size} RGB`], ["Classes", info.classes.length], ["Validation accuracy", pct(vm.accuracy)], ["Validation macro-F1", vm.macro_f1?.toFixed(3) ?? "–"], ["Serving device", info.device.toUpperCase()]];
+    $("#modelInfo").innerHTML = rows.map(([k, v]) => `<tr><td class="muted">${k}</td><td><b>${esc(v)}</b></td></tr>`).join("");
+    const h = rep.history;
+    $("#trainChart").innerHTML = h.length ? lineChart([
+      {name: "Validation accuracy", color: "var(--accent)", values: h.map(r => r.val_acc), dots: true},
+      {name: "Validation macro-F1", color: "var(--warn)", values: h.map(r => r.val_macro_f1), dots: true}],
+      {min: 0.6, max: 1, ticks: [0.6, 0.7, 0.8, 0.9, 1], fmt: v => Math.round(v * 100) + "%", xlabels: h.map(r => "Epoch " + Math.round(r.epoch)), label: "Validation accuracy and macro-F1 per epoch"}) + '<p class="hint">Epoch 1 trains only the new head (backbone frozen); the backbone is unfrozen from epoch 2.</p>'
+      : '<div class="empty">No training history found.</div>';
+    if (tm?.per_class) {
+      const pc = Object.entries(tm.per_class).filter(([k]) => S.classes.includes(k) || info.classes.includes(k)).sort((a, b) => b[1]["f1-score"] - a[1]["f1-score"]);
+      $("#perClass").innerHTML = `<table><thead><tr><th>Class</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th><th style="width:34%"></th><th class="num">Test images</th></tr></thead><tbody>${pc.map(([c, m]) => `<tr><td>${nice(c)}</td><td class="num">${m.precision.toFixed(3)}</td><td class="num">${m.recall.toFixed(3)}</td><td class="num"><b>${m["f1-score"].toFixed(3)}</b></td><td><div class="bar ${m["f1-score"] < 0.92 ? "warn" : ""}"><i style="width:${Math.max(0, (m["f1-score"] - 0.8) / 0.2) * 100}%"></i></div></td><td class="num">${m.support}</td></tr>`).join("")}</tbody></table><p class="hint">Bar axis runs from 0.80 to 1.00.</p>`;
+    }
+    const caps = {"confusion_matrix.png": "Confusion matrix (test set)", "gradcam_examples.png": "Grad-CAM examples", "training_curves.png": "Training curves", "reliability_diagram.png": "Calibration (reliability diagram)", "misclassified.png": "Most confident mistakes", "eda_samples.png": "Dataset samples per class", "eda_class_distribution.png": "Class distribution"};
+    $("#gallery").innerHTML = rep.images.length ? rep.images.map(n => `<figure tabindex="0" data-src="/artifacts/${n}" data-cap="${caps[n] || n}"><img src="/artifacts/${n}" alt="${caps[n] || n}" loading="lazy"><figcaption>${caps[n] || n}</figcaption></figure>`).join("") : '<div class="empty">No figures found.</div>';
+    $$("#gallery figure").forEach(f => { f.onclick = () => openModal(f.dataset.src, f.dataset.cap); f.onkeydown = e => { if (e.key === "Enter") openModal(f.dataset.src, f.dataset.cap); }; });
+    modelLoaded = true;
+  } catch (e) { toast("Could not load model report: " + e.message, "error"); }
+}
+
+/* ---------- start ---------- */
+loadInfo().then(() => show(location.hash.slice(1) || "classify"));
+loadSamples();
+setInterval(pollHealth, 15000);
+</script>
+</body>
+</html>

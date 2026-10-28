@@ -1,0 +1,19 @@
+__pycache__/
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+mlruns/
+
+# raw dataset and local manifest (absolute paths) are recreated by scripts/prepare_data.py;
+# the drift reference statistics and data report are small and needed by the API
+data/*
+!data/reference_stats.json
+!data/data_report.json
+
+# runtime state
+monitoring/
+experiments/
+
+# large / regenerable exports (python -m geovision.export)
+*.onnx

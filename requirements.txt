@@ -1,0 +1,23 @@
+# Install PyTorch first for your hardware - see README (CUDA for GPU training, CPU for serving)
+torch>=2.2
+torchvision>=0.17
+numpy
+pandas
+scikit-learn
+matplotlib
+pillow
+pyyaml
+tqdm
+# serving + UI
+fastapi
+uvicorn[standard]
+python-multipart
+streamlit
+requests
+# export
+onnx
+onnxruntime
+# dev
+pytest
+httpx
+# optional experiment tracking: pip install mlflow

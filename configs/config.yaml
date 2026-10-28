@@ -1,0 +1,45 @@
+# GeoVision - central experiment configuration.
+# Every script reads this file; any key can be overridden from the CLI.
+
+seed: 42
+project_name: geovision
+
+data:
+  root: data                 # raw dataset is downloaded here
+  manifest: data/manifest.csv
+  val_frac: 0.15
+  test_frac: 0.15
+  num_workers: 2
+
+model:
+  name: efficientnet_b0      # baseline_cnn | resnet50 | efficientnet_b0 | convnext_tiny
+  pretrained: true
+  dropout: 0.3
+  img_size: 128              # EuroSAT tiles are 64x64; upsampling helps ImageNet backbones
+
+train:
+  epochs: 15
+  batch_size: 64
+  lr: 0.001                  # head learning rate
+  backbone_lr_mult: 0.1      # backbone gets lr * mult (discriminative fine-tuning)
+  weight_decay: 0.0001
+  warmup_epochs: 1           # backbone frozen during warmup (head-only training)
+  label_smoothing: 0.1
+  mixup_alpha: 0.2           # 0 disables MixUp
+  early_stopping_patience: 4
+  amp: true                  # mixed precision on CUDA
+  max_train_batches: null    # set small for smoke tests
+
+eval:
+  tta: true                  # test-time augmentation (flips)
+
+paths:
+  artifacts: artifacts       # checkpoints, plots, metrics
+  experiments: experiments/runs.csv
+  monitoring_db: monitoring/predictions.db
+
+monitoring:
+  window: 500                # number of recent predictions compared to training reference
+  psi_warning: 0.1
+  psi_alert: 0.25
+  low_conf_threshold: 0.6

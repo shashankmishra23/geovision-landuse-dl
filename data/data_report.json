@@ -1,0 +1,45 @@
+{
+  "num_images": 27000,
+  "num_corrupt_removed": 0,
+  "classes": [
+    "AnnualCrop",
+    "Forest",
+    "HerbaceousVegetation",
+    "Highway",
+    "Industrial",
+    "Pasture",
+    "PermanentCrop",
+    "Residential",
+    "River",
+    "SeaLake"
+  ],
+  "class_counts": {
+    "AnnualCrop": 3000,
+    "Forest": 3000,
+    "HerbaceousVegetation": 3000,
+    "Highway": 2500,
+    "Industrial": 2500,
+    "Pasture": 2000,
+    "PermanentCrop": 2500,
+    "Residential": 3000,
+    "River": 2500,
+    "SeaLake": 3000
+  },
+  "split_counts": {
+    "train": 18900,
+    "val": 4050,
+    "test": 4050
+  },
+  "image_sizes": [
+    {
+      "width": 64,
+      "height": 64,
+      "n": 27000
+    }
+  ],
+  "train_channel_mean": [
+    0.3439,
+    0.38,
+    0.4075
+  ]
+}
