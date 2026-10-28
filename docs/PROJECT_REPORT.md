@@ -19,7 +19,7 @@ Land-use and land-cover (LULC) maps feed urban planning, agriculture subsidies, 
 ## 3. Preprocessing & augmentation
 | Step | Why |
 |---|---|
-| Resize 64 to 128 px | ImageNet backbones downsample 32×. At 64 px the final feature map is only 2×2, while 128 px gives 4×4 for better spatial features. |
+| Input size 64 px (native) | The reported model uses the native 64×64 tiles (final feature map 2×2). Upsampling to 128 px (4×4 feature map) is configurable and recommended when a GPU is available. |
 | ImageNet normalisation | Matches the statistics the pretrained weights expect |
 | H/V flip and 90° rotations | Overhead imagery has no canonical orientation, so these augmentations never change the label. |
 | RandomResizedCrop (0.7–1.0) | Scale invariance |
@@ -33,13 +33,14 @@ Land-use and land-cover (LULC) maps feed urban planning, agriculture subsidies, 
 3. **EfficientNet-B0** (default): compound-scaled, about 4 M parameters. It gives the best accuracy per FLOP and is the right choice for a 4 GB GPU and for CPU serving.
 4. **ConvNeXt-Tiny:** a modern CNN with transformer-style design choices.
 
-The new head on each pretrained backbone is Dropout followed by a Linear layer.
+The new head on each pretrained backbone is Dropout followed by a Linear layer. All four architectures are implemented behind one interface; **the reported results come from EfficientNet-B0 only** — the other three were not trained for this report (`scripts/compare_models.py` runs the comparison).
 
 ## 5. Training strategy
 - **Two-stage fine-tuning.** In epoch 1 the backbone is frozen and only the randomly initialised head trains. This stops large early gradients from destroying the pretrained features. After that, the whole network is unfrozen.
 - **Discriminative learning rates.** The backbone LR is 0.1 times the head LR.
 - **Optimiser:** AdamW (decoupled weight decay) with a cosine annealing schedule.
-- **Mixed precision (AMP):** about 2× faster with roughly half the memory on Turing+ GPUs.
+- **Mixed precision (AMP):** enabled automatically on CUDA GPUs (about 2× faster, half the memory). It was inactive in our run, which used the CPU because the GPU driver did not support CUDA 12.6.
+- **Run used for the reported model:** 5 epochs, 64 px, batch 64, CPU, 22 minutes in total; validation accuracy 73.0% → 88.3% → 89.9% → 92.6% → 92.8%.
 - **Gradient clipping** at a norm of 5.
 - **Model selection:** validation **macro-F1**, which is robust to the mild class imbalance. Training uses early stopping with a patience of 4, and only the best checkpoint is kept. The checkpoint stores weights, class names, image size, normalisation, metrics and the full config, so the model is self-describing.
 
@@ -54,12 +55,12 @@ The new head on each pretrained backbone is Dropout followed by a Linear layer.
 
 TTA averages the predictions from the original image, an H-flip and a V-flip.
 
-**Expected error analysis.** The usual confusions are:
-- *Highway* vs *River*: both are thin linear structures.
-- *AnnualCrop* vs *PermanentCrop* vs *Pasture*: these differ in texture and season.
-- *HerbaceousVegetation* vs *Pasture*.
+**Observed error analysis.** The five most frequent confusions account for 100 of the 221 test errors:
+- *Industrial* → *Residential* (30): both are built-up areas with rooftops and roads.
+- *HerbaceousVegetation* → *Forest* (21) and *Pasture* → *Forest* (15): green cover at 10 m/pixel.
+- *AnnualCrop* → *PermanentCrop* (19) and *PermanentCrop* → *HerbaceousVegetation* (15): field textures that depend on season.
 
-Grad-CAM shows whether the model looks at the road or river itself or at background context.
+Grad-CAM on the Industrial example concentrates on the large factory roofs, and the two misclassified tiles in the gallery have low confidence (31% and 43%).
 
 > **Measured results** (EfficientNet-B0, 5 epochs on CPU at 64 px, TTA on; `artifacts/test_metrics.json`):
 > | Model | Test acc | Macro-F1 | Top-3 | ECE | ms/img |
@@ -72,22 +73,24 @@ Grad-CAM shows whether the model looks at the road or river itself or at backgro
 Grad-CAM is implemented from scratch in `explain.py`. Hooks capture the activations of the last conv block and the gradients of the predicted logit with respect to them. Each channel is weighted by its average gradient. The weighted channels are summed, passed through ReLU, upsampled to the input size and overlaid on the input. The API returns the heatmap with `?explain=true`.
 
 ## 8. Deployment
-- **FastAPI:** `/predict`, `/predict/batch`, `/feedback`, `/model-info`, `/health`, `/monitoring/*` and `/metrics` (Prometheus). The service validates inputs (file type, 10 MB limit, at most 32 images per batch). It loads the model once at startup, and it returns a `503` error if the model is missing rather than crashing.
-- **Streamlit dashboard:** upload a tile, see the prediction, top-k chart and Grad-CAM, then send a correction. Batch mode exports CSV. A monitoring tab shows the health of the live system.
+- **FastAPI:** 15 routes, including `/predict`, `/predict/batch`, `/feedback`, `/model-info`, `/model/report`, `/health`, `/monitoring/*`, `/samples`, `/artifacts/*` and `/metrics` (Prometheus). The service validates inputs (file type, 10 MB limit, at most 32 images per batch). It loads the model once at startup, and it returns a `503` error if the model is missing rather than crashing.
+- **Web app** (served by FastAPI at `/`): classify by upload, drag-and-drop, paste or one-click test images; Grad-CAM viewer; feedback; batch processing with CSV export; live monitoring with traffic simulation; model report. A legacy Streamlit dashboard is also included.
 - **ONNX export:** a framework-independent model for edge or cloud runtimes. A numerical parity check against PyTorch confirms the export.
-- **Docker:** a slim CPU image that runs as a non-root user and has a healthcheck. docker-compose runs the API and the dashboard together.
-- **CI:** GitHub Actions runs the pytest suite on every push.
+- **Docker:** a Dockerfile for a slim CPU image (non-root user, healthcheck) and docker-compose are provided; they were not built as part of this project.
+- **CI:** GitHub Actions runs all 20 tests on every push (passing).
 
 ## 9. Monitoring
 | Signal | Method | Why it matters |
 |---|---|---|
 | Data drift | PSI of brightness, contrast and R/G/B means (recent window vs training reference) | Catches new sensors, haze, seasonal change and wrong band order before accuracy visibly drops |
 | Prediction drift | PSI of the predicted-class mix vs the training label mix | Shows the model suddenly predicting one class for everything |
-| Model health | Mean confidence and the share of predictions below 0.6 | A proxy for accuracy when no labels are available |
+| Model health | Mean confidence and the share of predictions below 0.6 | Reported for context only — this model is deliberately under-confident, so it does not set the drift status |
 | Live accuracy | Analysts submit true labels through `/feedback` | The only direct measure of real-world performance |
 | Ops | Request and error counters, p50/p95 latency via `/metrics` | SLOs and alerting in Prometheus/Grafana |
 
-The PSI thresholds are below 0.1 for OK, 0.1–0.25 for a warning and above 0.25 for an alert. An alert recommends labelling recent traffic and retraining. `scripts/simulate_traffic.py --drift dark|haze|color` demonstrates an alert firing.
+The status uses **noise-corrected PSI**: raw PSI minus its expected value with no drift, (bins − 1) / n, so small windows of normal traffic do not raise false warnings. Thresholds: below 0.1 OK, 0.1–0.25 warning, above 0.25 alert. An alert recommends labelling recent traffic and retraining.
+
+**Measured** on the running API (fixed random seeds): 60 normal test images → **Stable**, every corrected PSI 0.000, 56/60 correct. Adding 60 images darkened to 45% brightness → **Alert**: brightness 0.541, R 0.375, G 0.608, B 0.683, contrast 0.192, class mix 0.233; only 26/60 darkened images correct. The web app's *Simulate* buttons and `scripts/simulate_traffic.py --drift dark|haze|color` reproduce this.
 
 ## 10. Limitations & future work
 - RGB only. Sentinel-2 has 13 spectral bands, and using all of them (EuroSAT-MS) would help separate the crop classes.
@@ -99,12 +102,12 @@ The PSI thresholds are below 0.1 for OK, 0.1–0.25 for a warning and above 0.25
 
 ## Interview / viva questions you should be ready for
 
-1. **Why transfer learning when the images are only 64×64?** Low-level filters such as edges and textures transfer across domains. With about 19k training images, a scratch model tends to overfit, and the baseline CNN in this project quantifies that gap.
+1. **Why transfer learning when the images are only 64×64?** Low-level filters such as edges and textures transfer across domains. With about 19k training images, a scratch model tends to overfit. The project includes a baseline CNN so the gap can be measured with `scripts/compare_models.py` (not run for this report).
 2. **Why freeze the backbone for the first epoch?** The new head starts random, so early gradients are large and noisy. Back-propagating them into pretrained weights damages those weights, a problem known as catastrophic forgetting.
 3. **Why macro-F1 rather than accuracy for model selection?** Macro-F1 weights every class equally, so a weak minority class can't hide behind the majority classes.
 4. **What is ECE and why care?** ECE is the average gap between confidence and accuracy. Monitoring uses confidence as an accuracy proxy, and that only works if confidence is calibrated.
 5. **How does Grad-CAM work?** See section 7. Its limitation is coarse resolution, because the final feature map is only a few cells wide.
-6. **What is PSI?** It is defined as Σ (cur − ref) · ln(cur/ref) over bins. It measures how much a distribution has shifted, using quantile bins taken from the reference.
+6. **What is PSI?** It is defined as Σ (cur − ref) · ln(cur/ref) over bins. It measures how much a distribution has shifted, using quantile bins taken from the reference. Because PSI is biased upwards on small samples, we subtract its expected no-drift value (bins − 1) / n before applying thresholds.
 7. **Data drift vs concept drift?** Data drift means P(x) changes, for example with a new satellite sensor. Concept drift means P(y|x) changes, for example when a class definition changes. PSI catches data drift, and catching concept drift needs labelled feedback.
 8. **How would you scale this to all of India?** Tile the country with a sliding window and run batch inference with ONNX Runtime on GPU workers fed from a queue. Store the results as GeoTIFF/COG, and use the drift monitor per region and per season.
 9. **What does AMP do?** It runs matmuls and convolutions in FP16 and keeps master weights in FP32. GradScaler scales the loss so small gradients don't underflow.

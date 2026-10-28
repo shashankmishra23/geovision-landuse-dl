@@ -28,7 +28,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "geovision.train",
-      "args": ["--set", "model.img_size=64", "train.epochs=5"],
+      "args": [],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     },

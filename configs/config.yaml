@@ -1,5 +1,6 @@
 # GeoVision - central experiment configuration.
 # Every script reads this file; any key can be overridden from the CLI.
+# Defaults reproduce the reported model (EfficientNet-B0, 64 px, 5 epochs, seed 42).
 
 seed: 42
 project_name: geovision
@@ -9,16 +10,16 @@ data:
   manifest: data/manifest.csv
   val_frac: 0.15
   test_frac: 0.15
-  num_workers: 2
+  num_workers: 4
 
 model:
   name: efficientnet_b0      # baseline_cnn | resnet50 | efficientnet_b0 | convnext_tiny
   pretrained: true
   dropout: 0.3
-  img_size: 128              # EuroSAT tiles are 64x64; upsampling helps ImageNet backbones
+  img_size: 64               # native EuroSAT size (used for the reported model); 128 helps on a GPU
 
 train:
-  epochs: 15
+  epochs: 5                  # reported model; use 15 with img_size 128 on a GPU
   batch_size: 64
   lr: 0.001                  # head learning rate
   backbone_lr_mult: 0.1      # backbone gets lr * mult (discriminative fine-tuning)

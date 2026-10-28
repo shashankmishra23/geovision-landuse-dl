@@ -11,7 +11,7 @@
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-service-009688?logo=fastapi&logoColor=white)
 ![ONNX](https://img.shields.io/badge/ONNX-export-005CED?logo=onnx&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+![Dockerfile](https://img.shields.io/badge/Dockerfile-included-2496ED?logo=docker&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Classify satellite images into 10 land-use classes, see *why* the model decided, and get alerted when live data drifts.**
@@ -38,8 +38,8 @@
 | 🖥️ | **Web app** | Drag-and-drop, batch upload, CSV export, dark/light theme |
 | 📡 | **Drift monitoring** | Noise-corrected PSI raises an alert when input imagery changes |
 | ✅ | **Human feedback** | Confirm or correct predictions to track live accuracy |
-| ⚡ | **Production API** | FastAPI REST service, ONNX export (4.7× faster), Docker |
-| 🧪 | **Tested** | 20 automated tests on every push via GitHub Actions |
+| ⚡ | **Production API** | FastAPI REST service, ONNX export (4.7× faster on CPU), Dockerfile |
+| 🧪 | **Tested** | 20 automated tests, run on every push by GitHub Actions |
 
 ## 📸 Screenshots
 
@@ -118,11 +118,13 @@ Most errors are between look-alike classes — Industrial → Residential (30), 
 ```bash
 git clone https://github.com/shashankmishra23/geovision-landuse-dl.git
 cd geovision-landuse-dl
-python -m venv .venv && .venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
+python -m venv .venv
+.venv\Scripts\activate                 # macOS / Linux: source .venv/bin/activate
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt && pip install -e .
-python scripts/prepare_data.py                           # optional: dataset for built-in test images
-uvicorn app.api:app --port 8000                          # open http://127.0.0.1:8000
+pip install -r requirements.txt
+pip install -e .
+python scripts/prepare_data.py         # optional: downloads the dataset for the built-in test images
+uvicorn app.api:app --port 8000        # then open http://127.0.0.1:8000
 ```
 
 The trained model is included in `artifacts/`, so **no training is needed** to run the app.
@@ -135,8 +137,8 @@ The trained model is included in `artifacts/`, so **no training is needed** to r
 |---|---|
 | **Windows one-click** | double-click `run_demo.bat` |
 | **VS Code** | open the folder → **F5** → *GeoVision: Web app* |
-| **Docker** | `docker compose up --build` |
-| **Retrain** | `python -m geovision.train` (GPU: install the CUDA build of PyTorch) |
+| **Docker** | `docker compose up --build` (Dockerfile provided; not built as part of this project) |
+| **Retrain** | `python -m geovision.train` — defaults reproduce the reported model (64 px, 5 epochs) |
 | **Evaluate** | `python -m geovision.evaluate` |
 | **Compare models** | `python scripts/compare_models.py --epochs 10` |
 | **Export ONNX** | `python -m geovision.export` |
@@ -155,7 +157,7 @@ The trained model is included in `artifacts/`, so **no training is needed** to r
 | **Train** | Two stages: frozen backbone (epoch 1, 73%) → full fine-tune (epochs 2–5, 92.8% val) |
 | **Evaluate** | Accuracy, macro-F1, top-3, ECE calibration, confusion matrix, Grad-CAM |
 | **Deploy** | FastAPI service + web app, ONNX export, Dockerfile |
-| **Monitor** | Every request logged; PSI per image statistic vs. training data → stable / warning / alert |
+| **Monitor** | Every request logged; noise-corrected PSI vs. training data. Measured: 60 normal images → **Stable** (PSI 0.00); +60 darkened → **Alert** (brightness PSI 0.54) |
 
 <details>
 <summary><b>Model architecture</b></summary>
@@ -228,6 +230,9 @@ Interactive docs at **`/docs`** once the server is running.
 | `DELETE` | `/monitoring` | Reset the prediction log |
 | `GET` | `/model-info` · `/model/report` | Model details, test metrics, history |
 | `GET` | `/health` · `/metrics` | Liveness and Prometheus metrics |
+| `GET` | `/samples` · `/samples/{id}` | Random held-out test images (used by the web app) |
+| `GET` | `/artifacts/{name}` | Evaluation figures (confusion matrix, Grad-CAM, …) |
+| `GET` | `/` | The web app |
 
 <details>
 <summary><b>Example</b></summary>
@@ -286,7 +291,8 @@ geovision-landuse-dl/
 - [x] End-to-end pipeline: data → training → evaluation → deployment → monitoring
 - [x] Grad-CAM explanations in the API and web app
 - [x] Noise-corrected PSI drift detection with live feedback
-- [x] ONNX export and Docker packaging
+- [x] ONNX export (verified against PyTorch) and Dockerfile
+- [x] GitHub Actions CI running all 20 tests
 - [ ] GPU training at 128 px (target macro-F1 ≥ 0.97)
 - [ ] Temperature scaling for calibrated confidence
 - [ ] All 13 Sentinel-2 spectral bands
