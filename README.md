@@ -1,150 +1,317 @@
-# 🛰️ GeoVision — End-to-End Deep Learning for Satellite Land-Use Classification
+<div align="center">
 
-**Authors:** Shashank Mishra · Saksham Srivastava — Major Project, Deep Learning
+<img src="docs/assets/banner.svg" alt="GeoVision — end-to-end satellite land-use classification" width="100%">
 
-**Result:** EfficientNet-B0 reaches **94.5% test accuracy** (macro-F1 0.945) on 4,050 held-out Sentinel-2 images.
+<br>
 
-An end-to-end deep learning system. It starts from raw Sentinel-2 satellite imagery and ends with a monitored production service.
+[![CI](https://github.com/shashankmishra23/geovision-landuse-dl/actions/workflows/ci.yml/badge.svg)](https://github.com/shashankmishra23/geovision-landuse-dl/actions/workflows/ci.yml)
+![Test accuracy](https://img.shields.io/badge/test%20accuracy-94.5%25-3DDBC4)
+![Macro-F1](https://img.shields.io/badge/macro--F1-0.945-3DDBC4)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-service-009688?logo=fastapi&logoColor=white)
+![ONNX](https://img.shields.io/badge/ONNX-export-005CED?logo=onnx&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Real-world problem.** Governments, insurers and agri-tech companies need up-to-date land-use maps. They use them for urban planning, deforestation tracking, crop monitoring and flood-risk assessment. Labelling satellite tiles by hand doesn't scale. GeoVision classifies each 64×64 Sentinel-2 tile into one of 10 land-use classes and explains every decision. It also tells you when incoming imagery has drifted away from what the model was trained on.
+**Classify satellite images into 10 land-use classes, see *why* the model decided, and get alerted when live data drifts.**
 
-| Stage | What's implemented |
+[Demo](#-demo) · [Features](#-features) · [Results](#-results) · [Quick start](#-quick-start) · [How it works](#-how-it-works) · [API](#-rest-api) · [Team](#-team)
+
+</div>
+
+---
+
+## 🎬 Demo
+
+<div align="center">
+<img src="docs/assets/demo.gif" alt="Animated demo: classifying a satellite tile with Grad-CAM, batch processing, drift monitoring and the model report" width="90%">
+<br><sub>Classify → Grad-CAM heatmap → batch of 20 → drift alarm → model report (recorded from the real app)</sub>
+</div>
+
+## ✨ Features
+
+| | Feature | In one line |
+|:-:|---|---|
+| 🛰️ | **Land-use classification** | EfficientNet-B0 fine-tuned on 27,000 Sentinel-2 tiles, 10 classes |
+| 🔥 | **Explainable AI** | Grad-CAM heatmap shows which pixels drove each prediction |
+| 🖥️ | **Web app** | Drag-and-drop, batch upload, CSV export, dark/light theme |
+| 📡 | **Drift monitoring** | Noise-corrected PSI raises an alert when input imagery changes |
+| ✅ | **Human feedback** | Confirm or correct predictions to track live accuracy |
+| ⚡ | **Production API** | FastAPI REST service, ONNX export (4.7× faster), Docker |
+| 🧪 | **Tested** | 20 automated tests on every push via GitHub Actions |
+
+## 📸 Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/classify_result.png" alt="Classification result with confidence ring, probabilities and Grad-CAM"><br><b>Classify</b> — prediction, confidence, side-by-side Grad-CAM</td>
+<td width="50%"><img src="docs/assets/batch.png" alt="Batch page with 20 classified images"><br><b>Batch</b> — 20 images at once, review flags, CSV export</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/monitoring_alert.png" alt="Monitoring page showing a drift alert"><br><b>Monitoring</b> — drift alert after darkened images</td>
+<td width="50%"><img src="docs/assets/model_report.png" alt="Model report with metrics, training curve and per-class scores"><br><b>Model report</b> — metrics, training curve, per-class F1</td>
+</tr>
+</table>
+
+<details>
+<summary><b>More screenshots</b> (light theme, stable monitoring, full classify page)</summary>
+<br>
+
+| Light theme | Monitoring — normal traffic |
 |---|---|
-| **Raw data** | EuroSAT RGB, which has 27,000 Sentinel-2 tiles in 10 classes. It downloads automatically. |
-| **Preprocessing** | Integrity check that removes corrupt files, a reproducible *stratified* 70/15/15 split, a data-quality report, EDA figures and training-set reference statistics for drift detection |
-| **Augmentation** | Random resized crop, H/V flips, 90° rotations (satellite images have no "up"), colour jitter and MixUp |
-| **Models** | A CNN trained from scratch as the baseline, plus transfer learning with ResNet-50, EfficientNet-B0 and ConvNeXt-Tiny |
-| **Training** | Two-stage fine-tuning (frozen-backbone warmup, then full fine-tune), discriminative learning rates, AdamW, cosine LR, label smoothing, AMP mixed precision, gradient clipping, early stopping and best-checkpoint saving |
-| **Validation** | Macro-F1 on the validation set after every epoch drives model selection and early stopping |
-| **Evaluation** | Accuracy, macro and weighted F1, top-3 accuracy, per-class report, confusion matrix, calibration (ECE and reliability diagram), most-confident mistakes, latency benchmark and test-time augmentation |
-| **Explainability** | A from-scratch Grad-CAM heatmap for every prediction |
-| **Experiment tracking** | An `experiments/runs.csv` registry, an ablation script with a model leaderboard and optional MLflow |
-| **Deployment** | A FastAPI REST service (single and batch prediction, feedback endpoint), a Streamlit dashboard, ONNX export with a parity check, Docker and docker-compose |
-| **Monitoring** | Every request is logged to SQLite. PSI-based data drift and prediction drift, a low-confidence rate, live accuracy from user feedback and a Prometheus `/metrics` endpoint |
-| **Engineering** | A YAML config with CLI overrides, a pytest suite covering data, models, monitoring and the API, plus GitHub Actions CI |
+| <img src="docs/assets/classify_light.png" alt="Light theme"> | <img src="docs/assets/monitoring_stable.png" alt="Monitoring page, stable status"> |
 
-## Architecture
+<img src="docs/assets/classify.png" alt="Full classify page">
+</details>
+
+## 📊 Results
+
+Evaluated on **4,050 test images** the model never saw during training or model selection.
+
+<div align="center">
+
+| Accuracy | Macro-F1 | Top-3 accuracy | Latency (CPU) | Model size |
+|:-:|:-:|:-:|:-:|:-:|
+| **94.5%** | **0.945** | **99.6%** | **12.6 ms** / image | **4.0 M** params |
+
+</div>
+
+<table>
+<tr>
+<td width="50%"><img src="artifacts/confusion_matrix.png" alt="Confusion matrix"></td>
+<td width="50%"><img src="artifacts/gradcam_examples.png" alt="Grad-CAM examples"><br><br><img src="artifacts/training_curves.png" alt="Training curves"></td>
+</tr>
+</table>
+
+<details>
+<summary><b>Per-class scores</b></summary>
+<br>
+
+| Class | Precision | Recall | F1 |
+|---|:-:|:-:|:-:|
+| Sea / Lake | 0.972 | 0.993 | **0.982** |
+| Forest | 0.914 | 0.996 | 0.953 |
+| Industrial | 0.989 | 0.920 | 0.953 |
+| Annual crop | 0.957 | 0.936 | 0.946 |
+| Highway | 0.964 | 0.928 | 0.946 |
+| River | 0.942 | 0.947 | 0.944 |
+| Pasture | 0.962 | 0.923 | 0.942 |
+| Residential | 0.914 | 0.969 | 0.941 |
+| Herbaceous vegetation | 0.960 | 0.907 | 0.933 |
+| Permanent crop | 0.898 | 0.917 | 0.908 |
+
+Most errors are between look-alike classes — Industrial → Residential (30), Herbaceous → Forest (21), Annual → Permanent crop (19).
+</details>
+
+<details>
+<summary><b>Honest limitations</b></summary>
+<br>
+
+- Trained for **5 epochs on a CPU at 64 px** (the GPU driver did not support CUDA 12.6); a longer GPU run at 128 px is the path to ≥ 0.97 macro-F1.
+- **Calibration** (ECE 0.187) misses its < 0.03 target: the model is *under*-confident (76% mean confidence at 94.5% accuracy), a known effect of MixUp + label smoothing. Temperature scaling is the planned fix.
+- Trained on European imagery; other regions need fine-tuning.
+</details>
+
+## 🚀 Quick start
+
+```bash
+git clone https://github.com/shashankmishra23/geovision-landuse-dl.git
+cd geovision-landuse-dl
+python -m venv .venv && .venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt && pip install -e .
+python scripts/prepare_data.py                           # optional: dataset for built-in test images
+uvicorn app.api:app --port 8000                          # open http://127.0.0.1:8000
+```
+
+The trained model is included in `artifacts/`, so **no training is needed** to run the app.
+
+<details>
+<summary><b>Other ways to run</b></summary>
+<br>
+
+| How | Command |
+|---|---|
+| **Windows one-click** | double-click `run_demo.bat` |
+| **VS Code** | open the folder → **F5** → *GeoVision: Web app* |
+| **Docker** | `docker compose up --build` |
+| **Retrain** | `python -m geovision.train` (GPU: install the CUDA build of PyTorch) |
+| **Evaluate** | `python -m geovision.evaluate` |
+| **Compare models** | `python scripts/compare_models.py --epochs 10` |
+| **Export ONNX** | `python -m geovision.export` |
+| **Tests** | `pytest -q` |
+| **Drift demo (CLI)** | `python scripts/simulate_traffic.py --n 150 --drift dark` |
+</details>
+
+## 🧠 How it works
+
+<div align="center"><img src="docs/assets/pipeline.svg" alt="Animated pipeline: raw data → preprocess → train → evaluate → deploy → monitor, with a retraining loop" width="100%"></div>
+
+| Stage | What happens |
+|---|---|
+| **Data** | 27,000 EuroSAT tiles, every file verified, stratified 70/15/15 split (seed 42) |
+| **Preprocess** | 90° rotations and flips (satellite images have no “up”), crop, colour jitter, MixUp |
+| **Train** | Two stages: frozen backbone (epoch 1, 73%) → full fine-tune (epochs 2–5, 92.8% val) |
+| **Evaluate** | Accuracy, macro-F1, top-3, ECE calibration, confusion matrix, Grad-CAM |
+| **Deploy** | FastAPI service + web app, ONNX export, Dockerfile |
+| **Monitor** | Every request logged; PSI per image statistic vs. training data → stable / warning / alert |
+
+<details>
+<summary><b>Model architecture</b></summary>
+<br>
 
 ```mermaid
 flowchart LR
-    A[Raw Sentinel-2 tiles] --> B[prepare_data.py<br/>validate · split · EDA · reference stats]
-    B --> C[train.py<br/>transfer learning · AMP · early stopping]
-    C --> D[(best_model.pt)]
-    D --> E[evaluate.py<br/>metrics · calibration · confusion matrix]
-    D --> F[export.py → ONNX]
-    D --> G[FastAPI service]
-    G --> H[Streamlit dashboard]
-    G --> I[(SQLite prediction log)]
-    I --> J[DriftMonitor<br/>PSI · confidence · live accuracy]
-    J -->|alert| C
+    A["Input<br/>64×64×3"] --> B["Stem<br/>32×32×32"]
+    B --> C["MBConv ×16<br/>depthwise + SE + residual"]
+    C --> D["1×1 conv<br/>2×2×1280"]
+    D --> E["Global avg pool"]
+    E --> F["Dropout 0.3"]
+    F --> G["Linear 1280→10"]
+    style A fill:#3A2A10,stroke:#FFB547,color:#fff
+    style G fill:#3A2A10,stroke:#FFB547,color:#fff
 ```
 
-## Project structure
+ImageNet-pretrained EfficientNet-B0 backbone + our classification head (orange). 4.0 M parameters.
+</details>
 
-```
-geovision/
-├── configs/config.yaml        # every hyper-parameter lives here
-├── src/geovision/
-│   ├── data.py                # download, validation, stratified split, transforms, loaders
-│   ├── models.py              # baseline CNN + ResNet50 / EfficientNet-B0 / ConvNeXt-T
-│   ├── train.py               # training loop
-│   ├── evaluate.py            # test-set metrics, calibration, latency
-│   ├── explain.py             # Grad-CAM
-│   ├── inference.py           # Predictor class used by the API
-│   ├── export.py              # ONNX export + verification
-│   ├── monitoring.py          # prediction store + drift detection
-│   └── plots.py               # all report figures
-├── app/api.py                 # FastAPI service
-├── app/dashboard.py           # Streamlit UI
-├── scripts/                   # prepare_data · compare_models · simulate_traffic
-├── tests/                     # pytest suite (runs without the real dataset)
-├── docs/PROJECT_REPORT.md     # write-up for viva / interviews
-├── Dockerfile, docker-compose.yml, .github/workflows/ci.yml
-```
+<details>
+<summary><b>Training configuration</b></summary>
+<br>
 
-## Run the demo (Windows, already set up)
-
-Double-click **`run_demo.bat`**. It starts the server and opens the web app at http://127.0.0.1:8000:
-
-| Page | What you can do |
+| Setting | Value |
 |---|---|
-| **Classify** | Drop, browse or paste (Ctrl+V) an image, or click a test image. See the class, a confidence ring, top-k probabilities and the Grad-CAM heatmap (overlay with an opacity slider, or side by side). Confirm or correct the prediction, copy the JSON, download the heatmap. |
-| **Batch** | Upload up to 500 images (or add 20 test images), classify with progress, then filter, sort and export to CSV. |
-| **Monitoring** | Live KPIs, drift status, noise-corrected PSI per image statistic, a confidence chart and recent requests. Use *Simulate 60 normal / drifted requests* to demonstrate the drift alarm, *Auto-refresh*, and *Reset log*. |
-| **Model report** | Test metrics, model details, training curve, per-class precision/recall/F1 and every evaluation figure (click to enlarge). |
-| **Help** | Quick start and what each number means. Keys `1`–`5` switch pages. |
+| Optimiser | AdamW, weight decay 1e-4 |
+| Learning rate | head 1e-3, backbone 1e-4 (discriminative) |
+| Schedule | Cosine annealing to 1e-6 |
+| Batch · input | 64 · 64×64 RGB |
+| Loss | Cross-entropy, label smoothing 0.1 |
+| Regularisation | MixUp α 0.2, dropout 0.3, gradient clipping 5 |
+| Selection | Best validation macro-F1, early stopping (patience 4) |
+| Hardware · time | CPU · 22 minutes total |
+</details>
 
-The older Streamlit dashboard is still available: `streamlit run app/dashboard.py`.
+<details>
+<summary><b>Request lifecycle</b></summary>
+<br>
 
-## Quick start (Windows / Linux, NVIDIA GPU recommended)
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate            # Linux/macOS: source .venv/bin/activate
-
-# 1) PyTorch with CUDA (GPU). For CPU only, use .../whl/cpu instead
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-pip install -r requirements.txt
-pip install -e .
-
-# 2) Data: download, validate, split, EDA
-python scripts/prepare_data.py
-
-# 3) Train (EfficientNet-B0 by default) - evaluates on the test set automatically
-python -m geovision.train
-#    try other models / settings without editing files:
-python -m geovision.train --set model.name=resnet50 train.batch_size=32 train.epochs=10
-
-# 4) Explainability gallery + ONNX export
-python -m geovision.explain
-python -m geovision.export
-
-# 5) Serve
-uvicorn app.api:app --port 8000          # API docs at http://localhost:8000/docs
-streamlit run app/dashboard.py           # UI at http://localhost:8501
-
-# 6) Demo monitoring: normal traffic, then drifted traffic
-python scripts/simulate_traffic.py --n 200
-python scripts/simulate_traffic.py --n 200 --drift dark
-
-# Tests
-pytest -q
+```mermaid
+sequenceDiagram
+    participant U as Web app / client
+    participant A as FastAPI
+    participant M as EfficientNet-B0
+    participant L as Prediction log
+    participant D as Drift monitor
+    U->>A: POST /predict (image)
+    A->>A: validate type, size ≤ 10 MB
+    A->>M: preprocess + forward pass
+    M-->>A: probabilities + Grad-CAM
+    A->>L: log stats, label, confidence
+    A-->>U: label, top-k, heatmap, request id
+    U->>A: GET /monitoring/drift
+    A->>D: PSI(recent window vs training data)
+    D-->>U: stable / warning / alert
 ```
+</details>
 
-**Ablation study** (trains all four models and prints a leaderboard): `python scripts/compare_models.py --epochs 10`
+## 🔌 REST API
 
-**Docker** (after training): `docker compose up --build`. The API is on port 8000 and the dashboard on port 8501.
+Interactive docs at **`/docs`** once the server is running.
 
-On a 4 GB GPU such as a GTX 1650, the defaults (EfficientNet-B0, 128 px, batch 64, AMP) fit in memory. For ResNet-50 or ConvNeXt, use `train.batch_size=32`. If memory runs out, lower `model.img_size` or the batch size.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/predict` | Classify one image (`?top_k=5&explain=true` adds Grad-CAM) |
+| `POST` | `/predict/batch` | Classify up to 32 images |
+| `POST` | `/feedback` | Attach the true label to a past prediction |
+| `GET` | `/monitoring/summary` · `/recent` · `/drift` | Traffic, latency, live accuracy, drift report |
+| `DELETE` | `/monitoring` | Reset the prediction log |
+| `GET` | `/model-info` · `/model/report` | Model details, test metrics, history |
+| `GET` | `/health` · `/metrics` | Liveness and Prometheus metrics |
 
-## Results
-
-Fill this table in from `artifacts/test_metrics.json` and `experiments/leaderboard.csv` after you train.
-
-| Model | Params | Test acc | Macro-F1 | ECE | Latency (ms/img) |
-|---|---|---|---|---|---|
-| Baseline CNN (scratch) | 1.2 M | | | | |
-| ResNet-50 | 23.5 M | | | | |
-| EfficientNet-B0 (5 epochs, CPU, 64 px) | 4.0 M | **94.5%** | **0.945** | 0.187 | 12.6 |
-| ConvNeXt-Tiny | 27.8 M | | | | |
-
-Figures generated in `artifacts/`:
-- `eda_class_distribution.png`
-- `eda_samples.png`
-- `training_curves.png`
-- `confusion_matrix.png`
-- `reliability_diagram.png`
-- `misclassified.png`
-- `gradcam_examples.png`
-
-## API example
+<details>
+<summary><b>Example</b></summary>
 
 ```bash
-curl -F "file=@tile.jpg" "http://localhost:8000/predict?explain=false&top_k=3"
+curl -F "file=@tile.jpg" "http://127.0.0.1:8000/predict?top_k=3"
 ```
 ```json
-{"label": "Forest", "confidence": 0.98, "top_k": [...], "latency_ms": 12.4, "request_id": "..."}
+{
+  "label": "Industrial",
+  "class_index": 4,
+  "confidence": 0.784,
+  "top_k": [
+    {"label": "Industrial", "probability": 0.784},
+    {"label": "AnnualCrop", "probability": 0.041},
+    {"label": "Forest", "probability": 0.035}
+  ],
+  "latency_ms": 211.5,
+  "request_id": "aa0f4b09e3e64eaca7d6f8c09183afa9"
+}
 ```
+<sub>Real response for `Industrial_10.jpg` (first request after start-up, so latency includes warm-up).</sub>
+</details>
 
-## Dataset citation
-Helber et al., *EuroSAT: A Novel Dataset and Deep Learning Benchmark for Land Use and Land Cover Classification*, IEEE JSTARS 2019.
+## 📁 Project structure
+
+<details>
+<summary><b>Show tree</b></summary>
+
+```
+geovision-landuse-dl/
+├── app/
+│   ├── api.py                 # FastAPI service (REST endpoints + web app)
+│   ├── static/index.html      # single-page web app
+│   └── dashboard.py           # legacy Streamlit dashboard
+├── src/geovision/
+│   ├── data.py                # download, validation, stratified split, transforms
+│   ├── models.py              # EfficientNet-B0, ResNet-50, ConvNeXt-T, baseline CNN
+│   ├── train.py               # two-stage fine-tuning loop
+│   ├── evaluate.py            # metrics, calibration, latency
+│   ├── explain.py             # Grad-CAM (from scratch)
+│   ├── monitoring.py          # prediction store + noise-corrected PSI drift
+│   ├── export.py              # ONNX export + parity check
+│   └── inference.py · plots.py · config.py
+├── artifacts/                 # trained model, metrics, figures
+├── configs/config.yaml        # every hyper-parameter
+├── scripts/                   # prepare_data · compare_models · simulate_traffic · capture_screenshots
+├── tests/                     # 20 pytest tests
+├── docs/                      # project report + README assets
+└── Dockerfile · docker-compose.yml · run_demo.bat
+```
+</details>
+
+## 🗺️ Roadmap
+
+- [x] End-to-end pipeline: data → training → evaluation → deployment → monitoring
+- [x] Grad-CAM explanations in the API and web app
+- [x] Noise-corrected PSI drift detection with live feedback
+- [x] ONNX export and Docker packaging
+- [ ] GPU training at 128 px (target macro-F1 ≥ 0.97)
+- [ ] Temperature scaling for calibrated confidence
+- [ ] All 13 Sentinel-2 spectral bands
+- [ ] Pixel-level segmentation (U-Net) for full maps
+
+## 👥 Team
+
+<table>
+<tr>
+<td align="center"><a href="https://github.com/shashankmishra23"><img src="https://github.com/shashankmishra23.png" width="90" alt="Shashank Mishra"><br><b>Shashank Mishra</b></a><br><sub>@shashankmishra23</sub></td>
+<td align="center"><a href="https://github.com/Saksham653"><img src="https://github.com/Saksham653.png" width="90" alt="Saksham Srivastava"><br><b>Saksham Srivastava</b></a><br><sub>@Saksham653</sub></td>
+</tr>
+</table>
+
+Major Project · Deep Learning. A detailed write-up is in [`docs/PROJECT_REPORT.md`](docs/PROJECT_REPORT.md).
+
+## 📚 Acknowledgements
+
+- Dataset: Helber et al., *EuroSAT: A Novel Dataset and Deep Learning Benchmark for Land Use and Land Cover Classification*, IEEE JSTARS 2019.
+- EfficientNet: Tan & Le, ICML 2019. Grad-CAM: Selvaraju et al., ICCV 2017.
+
+<div align="center">
+
+**If you found this project useful, please consider giving it a ⭐**
+
+<sub>Released under the [MIT License](LICENSE).</sub>
+
+</div>
