@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this project, please cite it as below."
+title: "GeoVision: End-to-End Deep Learning for Satellite Land-Use Classification"
+type: software
+authors:
+  - given-names: Shashank
+    family-names: Mishra
+  - given-names: Saksham
+    family-names: Srivastava
+  - given-names: Priyanshu
+    family-names: Verma
+repository-code: "https://github.com/shashankmishra23/geovision-landuse-dl"
+license: MIT
+keywords:
+  - deep learning
+  - satellite imagery
+  - land-use classification
+  - EuroSAT
+  - EfficientNet
+  - Grad-CAM
