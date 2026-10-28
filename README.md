@@ -298,6 +298,7 @@ geovision-landuse-dl/
 <tr>
 <td align="center"><a href="https://github.com/shashankmishra23"><img src="https://github.com/shashankmishra23.png" width="90" alt="Shashank Mishra"><br><b>Shashank Mishra</b></a><br><sub>@shashankmishra23</sub></td>
 <td align="center"><a href="https://github.com/Saksham653"><img src="https://github.com/Saksham653.png" width="90" alt="Saksham Srivastava"><br><b>Saksham Srivastava</b></a><br><sub>@Saksham653</sub></td>
+<td align="center"><a href="https://github.com/priyanshuverma1765-beep"><img src="https://github.com/priyanshuverma1765-beep.png" width="90" alt="Priyanshu Verma"><br><b>Priyanshu Verma</b></a><br><sub>Team member</sub></td>
 </tr>
 </table>
 
